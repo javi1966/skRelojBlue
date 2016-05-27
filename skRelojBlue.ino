@@ -1,9 +1,12 @@
-
 /* El modulo Bluetooth HC_05 esta configurado
- *  como RELOJ_1,PW 1234 y a 115200 b.
- */
+    como RELOJ_1,PW 1234 y a 115200 b.
+*/
+
+
 #include <SoftwareSerial.h>
 #include <TimerOne.h>
+#include <Wire.h> //I2C communication library
+#include "ds3231.h" //Real Time Clock library
 #include "TM1637.h"
 
 
@@ -12,9 +15,6 @@
 #define DIO 3
 #define ON 1
 #define OFF 0
-
-
-
 
 const int LED = 13;
 
@@ -34,6 +34,8 @@ String aux = "";
 bool _DEBUG_ = true;
 
 
+
+
 TM1637 tm1637(CLK, DIO);
 SoftwareSerial BT(8, 9); //RX TX
 
@@ -45,10 +47,13 @@ void setup() {
 
   BT.begin(115000);
   Serial.begin(9600);
+  Wire.begin(); //Initialize I2C communication library
+  DS3231_init(0x00); //Initialize Real Time Clock for 1Hz square wave output (no RTC alarms on output pin)
   pinMode(LED, OUTPUT);
 
   tm1637.set(BRIGHTEST);//BRIGHT_TYPICAL = 2,BRIGHT_DARKEST = 0,BRIGHTEST = 7;
   tm1637.init();
+  
   Timer1.initialize(500000);//timing for 500ms
   Timer1.attachInterrupt(TimingISR);//declare the interrupt serve routine:TimingISR
 }
@@ -57,24 +62,28 @@ void loop() {
   // put your main code here, to run repeatedly:
 
 
-
   if (Update == ON)
   {
+
 
     TimeUpdate();
     tm1637.display(TimeDisp);
 
-    if(hora == hora_alarma && minuto == minuto_alarma)
-      if(_DEBUG_)
+
+
+    if (hora == hora_alarma && minuto == minuto_alarma)
+      if (_DEBUG_)
         Serial.print("!!!!!!!!!!ALARMA !!!!!!!!!!!!");
 
   }
 
   if (BT.available() > 0) {
+
+
     // read the incoming byte:
     strDato = BT.readString();
 
-    if (strDato.length() < 4 || strDato.length() > 6) {
+    if (strDato.length() < 4 || strDato.length() > 9) {
       if (_DEBUG_)
         Serial.print("Incorrecto: " + strDato + "\n");
       return;
@@ -101,28 +110,39 @@ void loop() {
       }
       displayAlarma();
     }
-     else if(strDato.startsWith("B")){
+    else if (strDato.startsWith("B")) {
 
-        hora_alarma = 0;
-        minuto_alarma = 0;
-        
-        if (_DEBUG_) 
-            Serial.print("Alarma Borrada");
-        
-      
-     }
+      hora_alarma = 0;
+      minuto_alarma = 0;
+
+      if (_DEBUG_)
+        Serial.print("Alarma Borrada");
+
+
+    }
 
     else {
 
-      if (strDato.length() == 4) {
-        minuto = strDato.substring(2, 4).toInt();
-        hora = strDato.substring(0, 2).toInt();
-      }
-      else if (strDato.length() == 5) {
+      struct ts t;
 
-        minuto = strDato.substring(3, 5).toInt();
-        hora = strDato.substring(0, 2).toInt();
+      if (strDato.length() == 7) {
+        t.sec = strDato.substring(6, 7).toInt();
+        t.min = strDato.substring(3, 5).toInt();
+        t.hour = strDato.substring(0, 2).toInt();
+
+        //minuto = strDato.substring(2, 4).toInt();
+        //hora = strDato.substring(0, 2).toInt();
       }
+      else if (strDato.length() == 8) {
+        t.sec = strDato.substring(6,8).toInt();
+        t.min = strDato.substring(3,5).toInt();
+        t.hour = strDato.substring(0, 2).toInt();
+        //minuto = strDato.substring(3, 5).toInt();
+        //hora = strDato.substring(0, 2).toInt();
+      }
+
+      DS3231_set(t);
+
     }
 
 
@@ -169,17 +189,27 @@ void TimingISR()
 //********************************************************************************
 void TimeUpdate(void)
 {
+  struct ts t;
   Update = OFF;
   int aux;
+
+  DS3231_get(&t);
 
   // if (ClockPoint)tm1637.point(POINT_ON);
   //  else tm1637.point(POINT_OFF);
   tm1637.set_decpoint(1);
 
-  TimeDisp[0] = hora / 10;
-  TimeDisp[1] = hora % 10;
-  TimeDisp[2] = minuto / 10;
-  TimeDisp[3] = minuto % 10;
+
+  TimeDisp[0] = t.hour / 10;
+  TimeDisp[1] = t.hour % 10;
+  TimeDisp[2] = t.min / 10;
+  TimeDisp[3] = t.min % 10;
+
+  /*
+    TimeDisp[0] = hora / 10;
+    TimeDisp[1] = hora % 10;
+    TimeDisp[2] = minuto / 10;
+    TimeDisp[3] = minuto % 10;*/
 
 }
 //*******************************************************************************
