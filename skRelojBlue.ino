@@ -6,6 +6,7 @@
 #include <SoftwareSerial.h>
 #include <TimerOne.h>
 #include <Wire.h> //I2C communication library
+#include <OneWire.h>
 #include "ds3231.h" //Real Time Clock library
 #include "TM1637.h"
 
@@ -17,6 +18,7 @@
 #define OFF 0
 
 const int LED = 13;
+const int BUZZER = 7;
 
 int8_t TimeDisp[] = {0x00, 0x00, 0x00, 0x00};
 unsigned char ClockPoint = 1;
@@ -48,6 +50,9 @@ void setup() {
   Wire.begin(); //Initialize I2C communication library
   DS3231_init(DS3231_INTCN); //Initialize Real Time Clock for 1Hz square wave output (no RTC alarms on output pin)
   pinMode(LED, OUTPUT);
+  pinMode(BUZZER,OUTPUT);
+
+  BUZZER =0; 
 
   tm1637.set(BRIGHTEST);//BRIGHT_TYPICAL = 2,BRIGHT_DARKEST = 0,BRIGHTEST = 7;
   tm1637.init();
@@ -86,7 +91,7 @@ void loop() {
 
       }
 
-
+      BUZZER =1;
 
       if (_DEBUG_)
 
