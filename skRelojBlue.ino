@@ -1,3 +1,5 @@
+
+
 /* El modulo Bluetooth HC_05 esta configurado
     como RELOJ_1,PW 1234 y a 115200 b.
 */
@@ -23,6 +25,7 @@ const int BUZZER = 7;
 int8_t TimeDisp[] = {0x00, 0x00, 0x00, 0x00};
 unsigned char ClockPoint = 1;
 bool Update = false;
+bool bVisTemperatura = false;
 unsigned char halfsecond = 0;
 unsigned char second = 0;
 unsigned char minuto = 0;
@@ -39,6 +42,8 @@ String aux = "";
 bool _DEBUG_ = true;
 float Temperatura;
 
+
+OneWire  ds1820(10);
 TM1637 tm1637(CLK, DIO);
 SoftwareSerial BT(8, 9); //RX TX
 
@@ -50,12 +55,15 @@ void setup() {
   Wire.begin(); //Initialize I2C communication library
   DS3231_init(DS3231_INTCN); //Initialize Real Time Clock for 1Hz square wave output (no RTC alarms on output pin)
   pinMode(LED, OUTPUT);
-  pinMode(BUZZER,OUTPUT);
+  pinMode(BUZZER, OUTPUT);
 
-  BUZZER =0; 
+  digitalWrite(BUZZER, LOW);
+
 
   tm1637.set(BRIGHTEST);//BRIGHT_TYPICAL = 2,BRIGHT_DARKEST = 0,BRIGHTEST = 7;
   tm1637.init();
+
+
 
   Timer1.initialize(500000);//timing for 500ms
   Timer1.attachInterrupt(TimingISR);//declare the interrupt serve routine:TimingISR
@@ -64,10 +72,12 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
 
-  if (Update == ON)
+  if (Update == ON  )
   {
     TimeUpdate();
-    tm1637.display(TimeDisp);
+
+    if (!bVisTemperatura)
+      tm1637.display(TimeDisp);
 
 
     if (DS3231_triggered_a1()) {
@@ -91,13 +101,15 @@ void loop() {
 
       }
 
-      BUZZER =1;
+      digitalWrite(BUZZER, HIGH);
 
       if (_DEBUG_)
-
         Serial.print("!!!!!!!!!!ALARMA !!!!!!!!!!!!\r\n");
 
     }//if disparo alarma
+
+
+
 
     if (BT.available() > 0) {
 
@@ -177,14 +189,87 @@ void loop() {
 
   }//if (Update == ON)
 
+  if (bVisTemperatura)
+  {
+    displayTemperatura();
+    bVisTemperatura = false;
+  }
 
 }
 
 //***************************************************************************************
+float leeTemperatura() {
+
+  byte data[12];
+  byte addr[8];
+  byte i;
+  byte present = 0;
+  float celsius;
+
+  if ( !ds1820.search(addr)) {
+
+    if (_DEBUG_) {
+      Serial.println("No direcciones de  1820");
+      Serial.println();
+    }
+    ds1820.reset_search();
+    delay(250);
+    return 0.0;
+  }
+
+  if (_DEBUG_) {
+
+    Serial.print("ROM =");
+    for ( i = 0; i < 8; i++) {
+      Serial.write(' ');
+      Serial.print(addr[i], HEX);
+    }
+  }
+
+  ds1820.reset();
+  ds1820.select(addr);
+  ds1820.write(0x44, 1);
+  delay(1000);
+  present = ds1820.reset();
+  ds1820.select(addr);
+  ds1820.write(0xBE);
+
+  if (_DEBUG_) {
+    Serial.print("  Data = ");
+    Serial.print(present, HEX);
+    Serial.print(" ");
+  }
+  for ( i = 0; i < 9; i++) {           // we need 9 bytes
+    data[i] = ds1820.read();
+    if (_DEBUG_) {
+      Serial.print(data[i], HEX);
+      Serial.print(" ");
+    }
+  }
+
+  int16_t raw = (data[1] << 8) | data[0];
+  raw = raw << 3;
+  if (data[7] == 0x10) {
+    // "count remain" gives full 12 bit resolution
+    raw = (raw & 0xFFF0) + 12 - data[6];
+  }
+
+  celsius = (float)raw / 16.0;
+  celsius -= 1.0;
+
+  return (celsius);
+
+}
+
+
+//*******************************************************************************************
 
 void TimingISR()
 {
   static byte cntTemp = 0;
+  static byte cntTemperatura = 0;
+  static byte cntVisTemperatura = 0;
+
   char tempF[6];
 
   halfsecond ++;
@@ -195,16 +280,31 @@ void TimingISR()
   if (++cntTemp > 2)
   {
     //Temperatura = DS3231_get_treg();
-  
-   // dtostrf(Temperatura, 5, 1, tempF);
-   // Serial.println(tempF);
+
+    // dtostrf(Temperatura, 5, 1, tempF);
+    // Serial.println(tempF);
     toggle = !toggle;
     digitalWrite(LED, toggle);
     cntTemp = 0;
   }
 
+  if (++cntTemperatura > 3) {
 
-  // Serial.println(second);
+    Temperatura = leeTemperatura();
+    if (_DEBUG_) {
+      Serial.print("  Temperatura = ");
+      Serial.print(Temperatura);
+    }
+    cntTemperatura = 0;
+  }
+
+  if (++cntVisTemperatura > 10) {
+    bVisTemperatura = true;
+    cntVisTemperatura = false;
+  }
+
+
+
 }
 //********************************************************************************
 void TimeUpdate(void)
@@ -240,6 +340,17 @@ void displayAlarma(void)
   tm1637.set(BRIGHTEST);
   Timer1.restart();
 
+}
+//********************************************************************************
+void displayTemperatura(void) {
+
+  int8_t TempDisp[] = {0x00, 0x00, 0x00, 0x00};
+  TempDisp[0] = 0x31;
+  TempDisp[1] = 0x32;
+  TempDisp[2] = 0x33;
+  TempDisp[3] = 0x34;
+  tm1637.set_decpoint(1);
+  tm1637.display(TempDisp);
 }
 //********************************************************************************
 void setAlarma()
