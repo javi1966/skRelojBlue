@@ -21,6 +21,7 @@
 
 const int LED = 13;
 const int BUZZER = 7;
+const int BTN_AL_OFF = 6;
 
 int8_t TimeDisp[] = {0x00, 0x00, 0x00, 0x00};
 unsigned char ClockPoint = 1;
@@ -39,8 +40,10 @@ bool toggle = false;
 int16_t i = 0;
 String strDato = "";
 String aux = "";
-bool _DEBUG_ = true;
+bool _DEBUG_ = false;
 float Temperatura;
+bool bFlag5Seg = false;
+byte tarea = 0;
 
 
 OneWire  ds1820(10);
@@ -56,6 +59,8 @@ void setup() {
   DS3231_init(DS3231_INTCN); //Initialize Real Time Clock for 1Hz square wave output (no RTC alarms on output pin)
   pinMode(LED, OUTPUT);
   pinMode(BUZZER, OUTPUT);
+  pinMode(BTN_AL_OFF, INPUT); //Alarma OFF
+
 
   digitalWrite(BUZZER, LOW);
 
@@ -63,7 +68,7 @@ void setup() {
   tm1637.set(BRIGHTEST);//BRIGHT_TYPICAL = 2,BRIGHT_DARKEST = 0,BRIGHTEST = 7;
   tm1637.init();
 
-
+  Temperatura = leeTemperatura();
 
   Timer1.initialize(500000);//timing for 500ms
   Timer1.attachInterrupt(TimingISR);//declare the interrupt serve routine:TimingISR
@@ -72,12 +77,42 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
 
+
+  switch (tarea) {
+
+    case 0:  tm1637.set(BRIGHTEST);
+             tm1637.display(TimeDisp);
+             break;
+    case 1:  tm1637.set(BRIGHT_TYPICAL);
+             tm1637.display(Temperatura);
+             break ;
+
+    default: break;
+  }
+
+  if (bFlag5Seg)
+  {
+    tarea = !tarea;
+    bFlag5Seg = false;
+  }
+
+  if (!digitalRead(BTN_AL_OFF)) { //Reset alarm flag if set button pressed
+
+    delay(25); //25ms debounce time
+    if (!digitalRead(BTN_AL_OFF)) {
+      digitalWrite(BUZZER, LOW);
+      tm1637.set(BRIGHTEST);
+      DS3231_clear_a1f();
+    } //Clear alarm flag if set button pressed - insures alarm reset when turning alarm on
+  }
+
   if (Update == ON  )
   {
     TimeUpdate();
 
-    if (!bVisTemperatura)
-      tm1637.display(TimeDisp);
+
+    // if (!bVisTemperatura)
+    //   tm1637.display(TimeDisp);
 
 
     if (DS3231_triggered_a1()) {
@@ -93,6 +128,7 @@ void loop() {
       }
       else
       {
+        digitalWrite(BUZZER, LOW);
         tm1637.set(BRIGHTEST);
         beep_count = 0;
         hora_alarma = 0;
@@ -155,7 +191,7 @@ void loop() {
         minuto_alarma = 0;
         sec_alarma = 0;
         DS3231_clear_a1f();
-
+        digitalWrite(BUZZER, LOW);
         if (_DEBUG_)
           Serial.print("Alarma Borrada\r\n");
       }
@@ -189,11 +225,7 @@ void loop() {
 
   }//if (Update == ON)
 
-  if (bVisTemperatura)
-  {
-    displayTemperatura();
-    bVisTemperatura = false;
-  }
+
 
 }
 
@@ -205,6 +237,7 @@ float leeTemperatura() {
   byte i;
   byte present = 0;
   float celsius;
+
 
   if ( !ds1820.search(addr)) {
 
@@ -255,7 +288,7 @@ float leeTemperatura() {
   }
 
   celsius = (float)raw / 16.0;
-  celsius -= 1.0;
+  //celsius -= 1.0;
 
   return (celsius);
 
@@ -267,10 +300,10 @@ float leeTemperatura() {
 void TimingISR()
 {
   static byte cntTemp = 0;
-  static byte cntTemperatura = 0;
+  static byte cntTiempo = 0;
   static byte cntVisTemperatura = 0;
 
-  char tempF[6];
+  //char tempF[6];
 
   halfsecond ++;
   Update = ON;
@@ -288,19 +321,16 @@ void TimingISR()
     cntTemp = 0;
   }
 
-  if (++cntTemperatura > 3) {
+  if (++cntTiempo > 15) {
 
-    Temperatura = leeTemperatura();
-    if (_DEBUG_) {
-      Serial.print("  Temperatura = ");
-      Serial.print(Temperatura);
-    }
-    cntTemperatura = 0;
+    bFlag5Seg = true;
+    cntTiempo = 0;
   }
 
-  if (++cntVisTemperatura > 10) {
-    bVisTemperatura = true;
-    cntVisTemperatura = false;
+  if (++cntVisTemperatura > 30) {
+
+    Temperatura = leeTemperatura();
+    cntVisTemperatura = 0;
   }
 
 
@@ -343,14 +373,25 @@ void displayAlarma(void)
 }
 //********************************************************************************
 void displayTemperatura(void) {
+  char buffer[6];
+  int8_t data[] = {0x00, 0x00, 0x00, 0x00};
 
-  int8_t TempDisp[] = {0x00, 0x00, 0x00, 0x00};
-  TempDisp[0] = 0x31;
-  TempDisp[1] = 0x32;
-  TempDisp[2] = 0x33;
-  TempDisp[3] = 0x34;
+  dtostrf(Temperatura, 2, 1, buffer);
+
+  for (int i = 0; i < 3; i++) {           // we need 9 bytes
+    
+   
+      Serial.print(buffer[i]);
+      Serial.print("\r\n");
+  }
+
+  
+  data[0]= buffer[0]+0x30;
+  data[1]= buffer[1];
+  data[2]= buffer[3];
+  data[3]=0xC3;
   tm1637.set_decpoint(1);
-  tm1637.display(TempDisp);
+  tm1637.display(data);
 }
 //********************************************************************************
 void setAlarma()
