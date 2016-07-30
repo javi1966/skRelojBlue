@@ -27,7 +27,7 @@ int8_t TimeDisp[] = {0x00, 0x00, 0x00, 0x00};
 unsigned char ClockPoint = 1;
 bool Update = false;
 bool bVisTemperatura = false;
-unsigned char halfsecond = 0;
+
 unsigned char second = 0;
 unsigned char minuto = 0;
 unsigned char hora = 12;
@@ -43,7 +43,7 @@ String aux = "";
 bool _DEBUG_ = false;
 float Temperatura;
 bool bFlag5Seg = false;
-byte tarea = 0;
+bool tarea = false;
 
 
 OneWire  ds1820(10);
@@ -78,17 +78,7 @@ void loop() {
   // put your main code here, to run repeatedly:
 
 
-  switch (tarea) {
-
-    case 0:  tm1637.set(BRIGHTEST);
-             tm1637.display(TimeDisp);
-             break;
-    case 1:  tm1637.set(BRIGHT_TYPICAL);
-             tm1637.display(Temperatura);
-             break ;
-
-    default: break;
-  }
+  
 
   if (bFlag5Seg)
   {
@@ -109,6 +99,18 @@ void loop() {
   if (Update == ON  )
   {
     TimeUpdate();
+
+    switch (tarea) {
+
+    case 0:  tm1637.set(BRIGHTEST);
+             tm1637.display(TimeDisp);
+             break;
+    case 1:  tm1637.set(BRIGHT_TYPICAL);
+             tm1637.display(Temperatura);
+             break ;
+
+    default: break;
+  }
 
 
     // if (!bVisTemperatura)
@@ -225,8 +227,6 @@ void loop() {
 
   }//if (Update == ON)
 
-
-
 }
 
 //***************************************************************************************
@@ -303,12 +303,7 @@ void TimingISR()
   static byte cntTiempo = 0;
   static byte cntVisTemperatura = 0;
 
-  //char tempF[6];
-
-  halfsecond ++;
   Update = ON;
-
-
 
   if (++cntTemp > 2)
   {
