@@ -77,9 +77,6 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
 
-
-  
-
   if (bFlag5Seg)
   {
     tarea = !tarea;
@@ -102,19 +99,17 @@ void loop() {
 
     switch (tarea) {
 
-    case 0:  tm1637.set(BRIGHTEST);
-             tm1637.display(TimeDisp);
-             break;
-    case 1:  tm1637.set(BRIGHT_TYPICAL);
-             tm1637.display(Temperatura);
-             break ;
+      case 0:  tm1637.set(BRIGHTEST);
+               tm1637.display(TimeDisp);
+               break;
+      case 1:  tm1637.set(BRIGHT_TYPICAL);
+               tm1637.display(Temperatura);
+               break ;
 
-    default: break;
-  }
+      default: break;
+    }
 
 
-    // if (!bVisTemperatura)
-    //   tm1637.display(TimeDisp);
 
 
     if (DS3231_triggered_a1()) {
@@ -194,6 +189,7 @@ void loop() {
         sec_alarma = 0;
         DS3231_clear_a1f();
         digitalWrite(BUZZER, LOW);
+        
         if (_DEBUG_)
           Serial.print("Alarma Borrada\r\n");
       }
@@ -274,6 +270,7 @@ float leeTemperatura() {
   }
   for ( i = 0; i < 9; i++) {           // we need 9 bytes
     data[i] = ds1820.read();
+    
     if (_DEBUG_) {
       Serial.print(data[i], HEX);
       Serial.print(" ");
@@ -307,10 +304,7 @@ void TimingISR()
 
   if (++cntTemp > 2)
   {
-    //Temperatura = DS3231_get_treg();
-
-    // dtostrf(Temperatura, 5, 1, tempF);
-    // Serial.println(tempF);
+    
     toggle = !toggle;
     digitalWrite(LED, toggle);
     cntTemp = 0;
@@ -327,8 +321,6 @@ void TimingISR()
     Temperatura = leeTemperatura();
     cntVisTemperatura = 0;
   }
-
-
 
 }
 //********************************************************************************
@@ -373,18 +365,19 @@ void displayTemperatura(void) {
 
   dtostrf(Temperatura, 2, 1, buffer);
 
-  for (int i = 0; i < 3; i++) {           // we need 9 bytes
-    
-   
+  if (_DEBUG_)
+  {
+    for (int i = 0; i < 3; i++) {           // we need 9 bytes
       Serial.print(buffer[i]);
       Serial.print("\r\n");
+    }
   }
+ 
 
-  
-  data[0]= buffer[0]+0x30;
-  data[1]= buffer[1];
-  data[2]= buffer[3];
-  data[3]=0xC3;
+  data[0] = buffer[0] + 0x30;
+  data[1] = buffer[1];
+  data[2] = buffer[3];
+  data[3] = 0xC3;
   tm1637.set_decpoint(1);
   tm1637.display(data);
 }

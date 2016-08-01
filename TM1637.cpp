@@ -168,7 +168,7 @@ void TM1637::display(double Decimal)
   }
   DecPoint = i;
   
-  Serial.println(Decimal);
+  //Serial.println(Decimal);
   BlankingFlag = 0;
   display(temp);
    
