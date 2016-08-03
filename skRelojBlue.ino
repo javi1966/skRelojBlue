@@ -99,7 +99,10 @@ void loop() {
 
     switch (tarea) {
 
-      case 0:  tm1637.set(BRIGHTEST);
+      case 0:  digitalWrite(LED, ON);
+               delay(100);
+               digitalWrite(LED, OFF);
+               tm1637.set(BRIGHTEST);
                tm1637.display(TimeDisp);
                break;
       case 1:  tm1637.set(BRIGHT_TYPICAL);
@@ -258,7 +261,7 @@ float leeTemperatura() {
   ds1820.reset();
   ds1820.select(addr);
   ds1820.write(0x44, 1);
-  delay(1000);
+  delay(700);
   present = ds1820.reset();
   ds1820.select(addr);
   ds1820.write(0xBE);
@@ -306,7 +309,7 @@ void TimingISR()
   {
     
     toggle = !toggle;
-    digitalWrite(LED, toggle);
+   // digitalWrite(LED, toggle);
     cntTemp = 0;
   }
 
