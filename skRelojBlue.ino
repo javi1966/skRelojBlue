@@ -99,9 +99,7 @@ void loop() {
 
     switch (tarea) {
 
-      case 0:  digitalWrite(LED, ON);
-               delay(100);
-               digitalWrite(LED, OFF);
+      case 0:  
                tm1637.set(BRIGHTEST);
                tm1637.display(TimeDisp);
                break;
@@ -134,7 +132,7 @@ void loop() {
         hora_alarma = 0;
         minuto_alarma = 0;
         DS3231_clear_a1f();
-
+        DS3231_clear_a2f();
       }
 
       digitalWrite(BUZZER, HIGH);
@@ -183,6 +181,8 @@ void loop() {
 
         setAlarma();
         displayAlarma();
+        digitalWrite(LED, ON);
+              
 
       }
       else if (strDato.startsWith("B")) {
@@ -191,7 +191,9 @@ void loop() {
         minuto_alarma = 0;
         sec_alarma = 0;
         DS3231_clear_a1f();
-        digitalWrite(BUZZER, LOW);
+        DS3231_clear_a2f();
+        digitalWrite(BUZZER, OFF);
+        digitalWrite(LED, OFF);
         
         if (_DEBUG_)
           Serial.print("Alarma Borrada\r\n");
