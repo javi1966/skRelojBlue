@@ -90,6 +90,8 @@ void loop() {
       digitalWrite(BUZZER, LOW);
       tm1637.set(BRIGHTEST);
       DS3231_clear_a1f();
+      DS3231_clear_a2f();
+      
     } //Clear alarm flag if set button pressed - insures alarm reset when turning alarm on
   }
 
@@ -99,11 +101,12 @@ void loop() {
 
     switch (tarea) {
 
-      case 0:  
-               tm1637.set(BRIGHTEST);
+      case 0:  if(! DS3231_triggered_a1())
+                  tm1637.set(BRIGHTEST);
                tm1637.display(TimeDisp);
                break;
-      case 1:  tm1637.set(BRIGHT_TYPICAL);
+      case 1:  if(! DS3231_triggered_a1())
+                  tm1637.set(BRIGHT_TYPICAL);
                tm1637.display(Temperatura);
                break ;
 
@@ -116,8 +119,10 @@ void loop() {
     if (DS3231_triggered_a1()) {
 
 
-      if (++beep_count < 120) { //aprox minuto y medio
+      if (++beep_count < 60) { //aprox minuto y medio
+        digitalWrite(BUZZER, HIGH);
 
+       
         if (!toggle)
           tm1637.set(0);
         else
@@ -135,7 +140,7 @@ void loop() {
         DS3231_clear_a2f();
       }
 
-      digitalWrite(BUZZER, HIGH);
+      
 
       if (_DEBUG_)
         Serial.print("!!!!!!!!!!ALARMA !!!!!!!!!!!!\r\n");
@@ -194,6 +199,7 @@ void loop() {
         DS3231_clear_a2f();
         digitalWrite(BUZZER, OFF);
         digitalWrite(LED, OFF);
+        //borra_Alarma();
         
         if (_DEBUG_)
           Serial.print("Alarma Borrada\r\n");
@@ -402,6 +408,13 @@ void setAlarma()
   // set Alarm1
   DS3231_set_a1(0, minuto_alarma, hora_alarma, 0, flags); //Set alarm 1 RTC registers
 
+}
+//************************************************************************************
+void borra_Alarma(){
+   byte flags[5] = { 1, 1, 1, 1, 1 }; //Set alarm to trigger every 24 hours on time match
+
+  // set Alarm1
+  DS3231_set_a1(0, minuto_alarma, hora_alarma, 0, flags); //Set alarm 1 RTC registers
 }
 //************************************************************************************
 void get_alarm()
