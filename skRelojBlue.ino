@@ -35,6 +35,7 @@ unsigned char sec_alarma = 0;
 unsigned char minuto_alarma = 0;
 unsigned char hora_alarma = 0;
 int beep_count = 0;
+bool ALARM_ON_OFF = false;
 
 bool toggle = false;
 int16_t i = 0;
@@ -114,9 +115,7 @@ void loop() {
     }
 
 
-
-
-    if (DS3231_triggered_a1()) {
+    if (ALARM_ON_OFF && DS3231_triggered_a1()) {
 
 
       if (++beep_count < 60) { //aprox minuto y medio
@@ -134,8 +133,6 @@ void loop() {
         digitalWrite(BUZZER, LOW);
         tm1637.set(BRIGHTEST);
         beep_count = 0;
-        hora_alarma = 0;
-        minuto_alarma = 0;
         DS3231_clear_a1f();
         DS3231_clear_a2f();
       }
@@ -186,20 +183,19 @@ void loop() {
 
         setAlarma();
         displayAlarma();
+        ALARM_ON_OFF = true;
         digitalWrite(LED, ON);
               
 
       }
       else if (strDato.startsWith("B")) {
         tm1637.set(BRIGHTEST);
-        hora_alarma = 0;
-        minuto_alarma = 0;
-        sec_alarma = 0;
+        ALARM_ON_OFF = false;
         DS3231_clear_a1f();
         DS3231_clear_a2f();
         digitalWrite(BUZZER, OFF);
         digitalWrite(LED, OFF);
-        //borra_Alarma();
+        
         
         if (_DEBUG_)
           Serial.print("Alarma Borrada\r\n");
