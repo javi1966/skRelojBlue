@@ -41,7 +41,7 @@ bool toggle = false;
 int16_t i = 0;
 String strDato = "";
 String aux = "";
-bool _DEBUG_ = false;
+bool _DEBUG_ = true;
 float Temperatura;
 bool bFlag5Seg = false;
 bool tarea = false;
@@ -92,7 +92,7 @@ void loop() {
       tm1637.set(BRIGHTEST);
       DS3231_clear_a1f();
       DS3231_clear_a2f();
-      
+
     } //Clear alarm flag if set button pressed - insures alarm reset when turning alarm on
   }
 
@@ -102,13 +102,14 @@ void loop() {
 
     switch (tarea) {
 
-      case 0:  if(! DS3231_triggered_a1())
-                  tm1637.set(BRIGHTEST);
+      case 0:  if (! DS3231_triggered_a1())
+                   tm1637.set(BRIGHTEST);
                tm1637.display(TimeDisp);
                break;
-      case 1:  if(! DS3231_triggered_a1())
-                  tm1637.set(BRIGHT_TYPICAL);
-               tm1637.display(Temperatura);
+      case 1:  if (! DS3231_triggered_a1())
+                   tm1637.set(BRIGHT_TYPICAL);
+              // tm1637.display(Temperatura);
+               displayTemperatura();
                break ;
 
       default: break;
@@ -121,7 +122,7 @@ void loop() {
       if (++beep_count < 60) { //aprox minuto y medio
         digitalWrite(BUZZER, HIGH);
 
-       
+
         if (!toggle)
           tm1637.set(0);
         else
@@ -137,14 +138,12 @@ void loop() {
         DS3231_clear_a2f();
       }
 
-      
+
 
       if (_DEBUG_)
         Serial.print("!!!!!!!!!!ALARMA !!!!!!!!!!!!\r\n");
 
     }//if disparo alarma
-
-
 
 
     if (BT.available() > 0) {
@@ -185,7 +184,7 @@ void loop() {
         displayAlarma();
         ALARM_ON_OFF = true;
         digitalWrite(LED, ON);
-              
+
 
       }
       else if (strDato.startsWith("B")) {
@@ -195,10 +194,14 @@ void loop() {
         DS3231_clear_a2f();
         digitalWrite(BUZZER, OFF);
         digitalWrite(LED, OFF);
-        
-        
+
+
         if (_DEBUG_)
           Serial.print("Alarma Borrada\r\n");
+      }
+
+      else if (strDato.startsWith("T")) {
+         BT.write(Temperatura);
       }
       else {
         struct ts t;
@@ -277,7 +280,7 @@ float leeTemperatura() {
   }
   for ( i = 0; i < 9; i++) {           // we need 9 bytes
     data[i] = ds1820.read();
-    
+
     if (_DEBUG_) {
       Serial.print(data[i], HEX);
       Serial.print(" ");
@@ -311,9 +314,9 @@ void TimingISR()
 
   if (++cntTemp > 2)
   {
-    
+
     toggle = !toggle;
-   // digitalWrite(LED, toggle);
+    // digitalWrite(LED, toggle);
     cntTemp = 0;
   }
 
@@ -348,6 +351,13 @@ void TimeUpdate(void)
   TimeDisp[2] = t.min / 10;
   TimeDisp[3] = t.min % 10;
 
+  if(TimeDisp[2] == 0 && TimeDisp[3] == 0){
+      digitalWrite(BUZZER,HIGH);
+      delay(500);
+      digitalWrite(BUZZER,LOW);
+    
+  }
+
 }
 //*******************************************************************************
 void displayAlarma(void)
@@ -368,23 +378,24 @@ void displayAlarma(void)
 //********************************************************************************
 void displayTemperatura(void) {
   char buffer[6];
-  int8_t data[] = {0x00, 0x00, 0x00, 0x00};
+  int8_t data[] = {0x00, 0x00, 0x00, 0x00,0x00};
 
   dtostrf(Temperatura, 2, 1, buffer);
-
-  if (_DEBUG_)
-  {
-    for (int i = 0; i < 3; i++) {           // we need 9 bytes
-      Serial.print(buffer[i]);
-      Serial.print("\r\n");
-    }
-  }
  
-
-  data[0] = buffer[0] + 0x30;
+  
+   
+  
+  data[0] = buffer[0];
   data[1] = buffer[1];
   data[2] = buffer[3];
-  data[3] = 0xC3;
+  data[3] = 'C';
+  data[4] ='\0';
+  
+  if (_DEBUG_)
+  {
+    Serial.println((char *)data);
+  }
+
   tm1637.set_decpoint(1);
   tm1637.display(data);
 }
@@ -406,8 +417,8 @@ void setAlarma()
 
 }
 //************************************************************************************
-void borra_Alarma(){
-   byte flags[5] = { 1, 1, 1, 1, 1 }; //Set alarm to trigger every 24 hours on time match
+void borra_Alarma() {
+  byte flags[5] = { 1, 1, 1, 1, 1 }; //Set alarm to trigger every 24 hours on time match
 
   // set Alarm1
   DS3231_set_a1(0, minuto_alarma, hora_alarma, 0, flags); //Set alarm 1 RTC registers
