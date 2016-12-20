@@ -23,7 +23,7 @@ const int LED = 13;
 const int BUZZER = 7;
 const int BTN_AL_OFF = 6;
 
-int8_t TimeDisp[] = {0x00, 0x00, 0x00, 0x00};
+int8_t TimeDisp[] = {0x00, 0x00, 0x00, 0x00 , 0x00 ,0x00};
 unsigned char ClockPoint = 1;
 bool Update = false;
 bool bVisTemperatura = false;
@@ -103,14 +103,16 @@ void loop() {
     switch (tarea) {
 
       case 0:  if (! DS3231_triggered_a1())
-                   tm1637.set(BRIGHTEST);
-               tm1637.display(TimeDisp);
-               break;
+                     tm1637.set(BRIGHTEST);
+
+                   tm1637.display(TimeDisp);
+                   break;
       case 1:  if (! DS3231_triggered_a1())
-                   tm1637.set(BRIGHT_TYPICAL);
-              // tm1637.display(Temperatura);
-               displayTemperatura();
-               break ;
+                          tm1637.set(0);
+                      
+                 // tm1637.display(Temperatura);
+                   displayTemperatura();
+                   break ;
 
       default: break;
     }
@@ -137,8 +139,6 @@ void loop() {
         DS3231_clear_a1f();
         DS3231_clear_a2f();
       }
-
-
 
       if (_DEBUG_)
         Serial.print("!!!!!!!!!!ALARMA !!!!!!!!!!!!\r\n");
@@ -202,6 +202,7 @@ void loop() {
 
       else if (strDato.startsWith("T")) {
          BT.write(Temperatura);
+         Serial.println(Temperatura);
       }
       else {
         struct ts t;
@@ -350,12 +351,17 @@ void TimeUpdate(void)
   TimeDisp[1] = t.hour % 10;
   TimeDisp[2] = t.min / 10;
   TimeDisp[3] = t.min % 10;
+  TimeDisp[4] = t.sec / 10;
+  TimeDisp[5] = t.sec % 10;
 
-  if(TimeDisp[2] == 0 && TimeDisp[3] == 0){
+  if( t.min==0 && t.sec==0 ){
       digitalWrite(BUZZER,HIGH);
-      delay(500);
+      delay(50);
       digitalWrite(BUZZER,LOW);
-    
+      delay(50);
+      digitalWrite(BUZZER,HIGH);
+      delay(50);
+      digitalWrite(BUZZER,LOW);
   }
 
 }
@@ -378,24 +384,20 @@ void displayAlarma(void)
 //********************************************************************************
 void displayTemperatura(void) {
   char buffer[6];
-  int8_t data[] = {0x00, 0x00, 0x00, 0x00,0x00};
+  int8_t data[] = {0x00, 0x00, 0x00, 0x00};
 
   dtostrf(Temperatura, 2, 1, buffer);
- 
-  
-   
-  
-  data[0] = buffer[0];
-  data[1] = buffer[1];
-  data[2] = buffer[3];
-  data[3] = 'C';
-  data[4] ='\0';
-  
-  if (_DEBUG_)
-  {
-    Serial.println((char *)data);
-  }
 
+   if (_DEBUG_) {
+      Serial.println(buffer);
+      
+    }
+ 
+  data[0] = buffer[0]-0x30;
+  data[1] = buffer[1]-0x30;
+  data[2] = buffer[3]-0x30;
+  data[3] = 12;
+  
   tm1637.set_decpoint(1);
   tm1637.display(data);
 }
