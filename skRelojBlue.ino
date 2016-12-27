@@ -102,15 +102,16 @@ void loop() {
 
     switch (tarea) {
 
-      case 0:  if (! DS3231_triggered_a1())
-                     tm1637.set(BRIGHTEST);
-
+      case 0:  //if (! DS3231_triggered_a1())
+                   //  tm1637.set(BRIGHTEST);
+                   tm1637.set(BRIGHTEST);
                    tm1637.display(TimeDisp);
                    break;
-      case 1:  if (! DS3231_triggered_a1())
-                          tm1637.set(0);
+      case 1:  //if (! DS3231_triggered_a1())
+                 //         tm1637.set(BRIGHT_DARKEST);
                       
                  // tm1637.display(Temperatura);
+                   tm1637.set(BRIGHT_DARKEST);
                    displayTemperatura();
                    break ;
 
@@ -202,7 +203,11 @@ void loop() {
 
       else if (strDato.startsWith("T")) {
          BT.write(Temperatura);
-         Serial.println(Temperatura);
+
+         if (_DEBUG_) {
+          Serial.print("Comando T ");
+          Serial.println(Temperatura);
+         }
       }
       else {
         struct ts t;
