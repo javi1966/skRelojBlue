@@ -40,6 +40,7 @@ bool ALARM_ON_OFF = false;
 bool toggle = false;
 int16_t i = 0;
 String strDato = "";
+int8_t buff[]="";
 String aux = "";
 bool _DEBUG_ = true;
 float Temperatura;
@@ -124,13 +125,11 @@ void loop() {
 
       if (++beep_count < 60) { //aprox minuto y medio
         digitalWrite(BUZZER, HIGH);
-
-
+        
         if (!toggle)
           tm1637.set(0);
         else
           tm1637.set(BRIGHTEST);
-
       }
       else
       {
@@ -147,12 +146,11 @@ void loop() {
     }//if disparo alarma
 
 
-    if (BT.available() > 0) {
-
+    if ( BT.available() > 0 ) {
 
       // read the incoming byte:
       strDato = BT.readString();
-
+      strDato.trim();
       if ( ! strDato.length() && strDato.length() > 9) {
         if (_DEBUG_)
           Serial.print("Incorrecto: " + strDato + "\r\n");
@@ -202,14 +200,24 @@ void loop() {
       }
 
       else if (strDato.startsWith("T")) {
-         BT.write(Temperatura);
-
+        
+         BT.write(0xAA);
+         BT.print(Temperatura);
+         BT.write(0x55);
+          
          if (_DEBUG_) {
           Serial.print("Comando T ");
           Serial.println(Temperatura);
          }
       }
-      else {
+      else if ( strDato.indexOf(":") != -1 ) 
+      {
+
+         if (_DEBUG_) {
+          Serial.print(strDato.length());
+          Serial.print("Hora-> ");
+          Serial.println(strDato);
+         }
         struct ts t;
 
         if (strDato.length() == 7) {
@@ -224,7 +232,7 @@ void loop() {
           t.hour = strDato.substring(0, 2).toInt();
 
         }
-
+      
         DS3231_set(t);
 
       }
@@ -364,9 +372,7 @@ void TimeUpdate(void)
       delay(50);
       digitalWrite(BUZZER,LOW);
       delay(50);
-      digitalWrite(BUZZER,HIGH);
-      delay(50);
-      digitalWrite(BUZZER,LOW);
+      
   }
 
 }
