@@ -9,8 +9,8 @@
 #include <TimerOne.h>
 #include <Wire.h> //I2C communication library
 #include <OneWire.h>
-#include "ds3231.h" //Real Time Clock library
 #include "TM1637.h"
+#include "ds3231.h" //Real Time Clock library
 
 
 
@@ -23,7 +23,7 @@ const int LED = 13;
 const int BUZZER = 7;
 const int BTN_AL_OFF = 6;
 
-int8_t TimeDisp[] = {0x00, 0x00, 0x00, 0x00 , 0x00 ,0x00};
+int8_t TimeDisp[] = {0x00, 0x00, 0x00, 0x00 , 0x00 , 0x00};
 unsigned char ClockPoint = 1;
 bool Update = false;
 bool bVisTemperatura = false;
@@ -40,7 +40,7 @@ bool ALARM_ON_OFF = false;
 bool toggle = false;
 int16_t i = 0;
 String strDato = "";
-int8_t buff[]="";
+int8_t buff[] = "";
 String aux = "";
 bool _DEBUG_ = true;
 float Temperatura;
@@ -55,7 +55,7 @@ SoftwareSerial BT(8, 9); //RX TX
 void setup() {
   // put your setup code here, to run once:
 
-  BT.begin(115000);
+  BT.begin(115200);
   Serial.begin(9600);
   Wire.begin(); //Initialize I2C communication library
   DS3231_init(DS3231_INTCN); //Initialize Real Time Clock for 1Hz square wave output (no RTC alarms on output pin)
@@ -68,7 +68,7 @@ void setup() {
 
 
   tm1637.set(BRIGHTEST);//BRIGHT_TYPICAL = 2,BRIGHT_DARKEST = 0,BRIGHTEST = 7;
-  tm1637.init();
+  tm1637.init(0);
 
   Temperatura = leeTemperatura();
 
@@ -104,17 +104,18 @@ void loop() {
     switch (tarea) {
 
       case 0:  //if (! DS3231_triggered_a1())
-                   //  tm1637.set(BRIGHTEST);
-                   tm1637.set(BRIGHTEST);
-                   tm1637.display(TimeDisp);
-                   break;
+        //  tm1637.set(BRIGHTEST);
+        tm1637.set(BRIGHTEST);
+        tm1637.display(TimeDisp);
+        break;
       case 1:  //if (! DS3231_triggered_a1())
-                 //         tm1637.set(BRIGHT_DARKEST);
-                      
-                 // tm1637.display(Temperatura);
-                   tm1637.set(BRIGHT_DARKEST);
-                   displayTemperatura();
-                   break ;
+        //         tm1637.set(BRIGHT_DARKEST);
+
+        // tm1637.display(Temperatura);
+        tm1637.set(5);
+        tm1637.point(POINT_OFF);
+        displayTemperatura();
+        break ;
 
       default: break;
     }
@@ -125,7 +126,7 @@ void loop() {
 
       if (++beep_count < 60) { //aprox minuto y medio
         digitalWrite(BUZZER, HIGH);
-        
+
         if (!toggle)
           tm1637.set(0);
         else
@@ -159,7 +160,6 @@ void loop() {
 
       if (strDato.startsWith("A"))
       {
-
 
         if (strDato.length() == 5) {
 
@@ -200,24 +200,24 @@ void loop() {
       }
 
       else if (strDato.startsWith("T")) {
-        
-         BT.write(0xAA);
-         BT.print(Temperatura);
-         BT.write(0x55);
-          
-         if (_DEBUG_) {
+
+        BT.write(0xAA);
+        BT.print(Temperatura);
+        BT.write(0x55);
+
+        if (_DEBUG_) {
           Serial.print("Comando T ");
           Serial.println(Temperatura);
-         }
+        }
       }
-      else if ( strDato.indexOf(":") != -1 ) 
+      else if ( strDato.indexOf(":") != -1 )
       {
 
-         if (_DEBUG_) {
+        if (_DEBUG_) {
           Serial.print(strDato.length());
           Serial.print("Hora-> ");
           Serial.println(strDato);
-         }
+        }
         struct ts t;
 
         if (strDato.length() == 7) {
@@ -232,7 +232,7 @@ void loop() {
           t.hour = strDato.substring(0, 2).toInt();
 
         }
-      
+
         DS3231_set(t);
 
       }
@@ -279,6 +279,8 @@ float leeTemperatura() {
     }
   }
 
+  if (_DEBUG_) Serial.println("");
+
   ds1820.reset();
   ds1820.select(addr);
   ds1820.write(0x44, 1);
@@ -288,7 +290,7 @@ float leeTemperatura() {
   ds1820.write(0xBE);
 
   if (_DEBUG_) {
-    Serial.print("  Data = ");
+    Serial.print("Data = ");
     Serial.print(present, HEX);
     Serial.print(" ");
   }
@@ -300,7 +302,7 @@ float leeTemperatura() {
       Serial.print(" ");
     }
   }
-
+  if (_DEBUG_) Serial.println("");
   int16_t raw = (data[1] << 8) | data[0];
   raw = raw << 3;
   if (data[7] == 0x10) {
@@ -314,7 +316,6 @@ float leeTemperatura() {
   return (celsius);
 
 }
-
 
 //*******************************************************************************************
 
@@ -331,6 +332,7 @@ void TimingISR()
 
     toggle = !toggle;
     // digitalWrite(LED, toggle);
+    ClockPoint = !ClockPoint;
     cntTemp = 0;
   }
 
@@ -356,9 +358,9 @@ void TimeUpdate(void)
 
   DS3231_get(&t);
 
-  // if (ClockPoint)tm1637.point(POINT_ON);
-  //  else tm1637.point(POINT_OFF);
-  tm1637.set_decpoint(1);
+  if (ClockPoint)tm1637.point(POINT_ON);
+  else tm1637.point(POINT_OFF);
+
 
   TimeDisp[0] = t.hour / 10;
   TimeDisp[1] = t.hour % 10;
@@ -367,12 +369,12 @@ void TimeUpdate(void)
   TimeDisp[4] = t.sec / 10;
   TimeDisp[5] = t.sec % 10;
 
-  if( t.min==0 && t.sec==0 ){
-      digitalWrite(BUZZER,HIGH);
-      delay(50);
-      digitalWrite(BUZZER,LOW);
-      delay(50);
-      
+  if ( t.min == 0 && t.sec == 0 ) {
+    digitalWrite(BUZZER, HIGH);
+    delay(50);
+    digitalWrite(BUZZER, LOW);
+    delay(50);
+
   }
 
 }
@@ -399,18 +401,19 @@ void displayTemperatura(void) {
 
   dtostrf(Temperatura, 2, 1, buffer);
 
-   if (_DEBUG_) {
-      Serial.println(buffer);
-      
-    }
- 
-  data[0] = buffer[0]-0x30;
-  data[1] = buffer[1]-0x30;
-  data[2] = buffer[3]-0x30;
+  /*if (_DEBUG_) {
+    Serial.println(buffer);
+
+  }*/
+
+  data[0] = buffer[0] - 0x30;
+  data[1] = buffer[1] - 0x30;
+  data[2] = 17;//buffer[3] - 0x30;
   data[3] = 12;
-  
-  tm1637.set_decpoint(1);
-  tm1637.display(data);
+
+ 
+
+   tm1637.display(data);
 }
 //********************************************************************************
 void setAlarma()
