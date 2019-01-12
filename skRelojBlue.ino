@@ -326,13 +326,14 @@ void TimingISR()
   static byte cntVisTemperatura = 0;
 
   Update = ON;
+  ClockPoint = !ClockPoint;
 
   if (++cntTemp > 2)
   {
 
     toggle = !toggle;
     // digitalWrite(LED, toggle);
-    ClockPoint = !ClockPoint;
+    
     cntTemp = 0;
   }
 
